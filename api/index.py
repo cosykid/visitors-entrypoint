@@ -30,21 +30,18 @@ def track_and_redirect():
     today_str = now.strftime("%d/%m/%Y")
     today_serial = to_sheets_serial(now)
 
-    records = sheet.get_all_records()
+    try:
+        records = sheet.get_all_records()
+    except IndexError:
+        records = []
 
-    records = sheet.get_all_records()
-
-    if not records:
-        # Only headers exist — no data rows yet
-        sheet.append_row([today_serial, 1])
+    for i, row in enumerate(records, start=2):
+        if row.get("date") == today_str:
+            current_count = int(row.get("count", 0))
+            sheet.update_cell(i, 2, current_count + 1)
+            break
     else:
-        for i, row in enumerate(records, start=2):
-            if row.get("date") == today_str:
-                current_count = int(row.get("count", 0))
-                sheet.update_cell(i, 2, current_count + 1)
-                break
-        else:
-            sheet.append_row([today_serial, 1])
+        sheet.append_row([today_serial, 1])
 
     return redirect(os.environ["TARGET_URL"])
 
