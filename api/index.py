@@ -43,7 +43,29 @@ def track_and_redirect():
     else:
         sheet.append_row([today_serial, 1])
 
-    return redirect(os.environ["TARGET_URL"])
+    return f"""
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <title>잠시만 기다려 주세요...</title>
+        <meta http-equiv="refresh" content="2; url={os.environ['TARGET_URL']}">
+        <style>
+        body {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: sans-serif;
+            font-size: 1.5rem;
+            background: #f7f7f7;
+        }}
+        </style>
+    </head>
+    <body>
+        <p>잠시만 기다려 주세요...</p>
+    </body>
+    </html>
+    """
 
 if __name__ == "__main__":
     app.run(debug=True)
