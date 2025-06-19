@@ -32,13 +32,19 @@ def track_and_redirect():
 
     records = sheet.get_all_records()
 
-    for i, row in enumerate(records, start=2):
-        if row.get("date") == today_str:
-            current_count = int(row.get("count", 0))
-            sheet.update_cell(i, 2, current_count + 1)
-            break
-    else:
+    records = sheet.get_all_records()
+
+    if not records:
+        # Only headers exist — no data rows yet
         sheet.append_row([today_serial, 1])
+    else:
+        for i, row in enumerate(records, start=2):
+            if row.get("date") == today_str:
+                current_count = int(row.get("count", 0))
+                sheet.update_cell(i, 2, current_count + 1)
+                break
+        else:
+            sheet.append_row([today_serial, 1])
 
     return redirect(os.environ["TARGET_URL"])
 
