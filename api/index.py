@@ -1,11 +1,11 @@
 from flask import Flask, make_response
 from datetime import datetime
-import pytz
-from supabase import create_client
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
+import pytz
+from supabase import create_client
 
 app = Flask(__name__)
 
@@ -14,9 +14,13 @@ SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+def to_sheets_serial(dt):
+    epoch = datetime(1899, 12, 30, tzinfo=dt.tzinfo)
+    delta = dt - epoch
+    return delta.total_seconds() / 86400  # float: days since epoch
+
 @app.route("/")
 def track_and_redirect():
-    # ✅ 1. Return styled HTML *immediately*
     response = make_response(f"""
     <html lang="ko">
     <head>
@@ -41,26 +45,38 @@ def track_and_redirect():
     </html>
     """)
 
-    # ✅ 2. Use Sydney timezone for correct date
-    sydney = pytz.timezone("Australia/Sydney")
-    today = datetime.now(sydney).date().isoformat()  # e.g. "2025-06-23"
-
-    # ✅ 3. Atomically increment count via Supabase stored procedure
-    supabase.rpc("increment_daily_count", {"in_date": today}).execute()
-
-    # ✅ 4. Get total count for today
-    result = supabase.table("daily_visits").select("*").eq("date", today).single().execute()
-    count = result.data["count"]
-
-    # ✅ 5. Update Google Sheets
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(
-        json.loads(os.environ["GOOGLE_CREDS"]),
-        ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    )
+    # Google Sheets auth
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds_dict = json.loads(os.environ["GOOGLE_CREDS"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     sheet = client.open("visitors-entrypoint").sheet1
 
-    # Update cell B1 (or wherever you want)
-    sheet.update_acell("B1", count)
+    # Get Sydney datetime
+    sydney = pytz.timezone("Australia/Sydney")
+    now = datetime.now(sydney)
+
+    # For matching (Sheets returns date as YYYY-MM-DD string in get_all_records)
+    today_str = now.strftime("%d/%m/%Y")
+    today_serial = to_sheets_serial(now)
+
+    today = datetime.now(sydney).date().isoformat()
+    result = supabase.table("daily_visits").select("*").eq("date", today).single().execute()
+    count = result.data["count"]
+
+    try:
+        records = sheet.get_all_records()
+    except IndexError:
+        records = []
+
+    for i, row in enumerate(records, start=2):
+        if row.get("date") == today_str:
+            sheet.update_cell(i, 2, count)
+            break
+    else:
+        sheet.append_row([today_serial, 1])
 
     return response
+
+if __name__ == "__main__":
+    app.run(debug=True)
