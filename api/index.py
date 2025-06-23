@@ -2,12 +2,13 @@ from flask import Flask, make_response
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from supabase import create_client
 import os
 import json
 import pytz
-from supabase import create_client
 
 app = Flask(__name__)
+
 
 # Supabase client
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -71,7 +72,8 @@ def track_and_redirect():
 
     for i, row in enumerate(records, start=2):
         if row.get("date") == today_str:
-            sheet.update_cell(i, 2, count)
+            current_count = int(row.get("count", 0))
+            sheet.update_cell(i, 2, int(count))
             break
     else:
         sheet.append_row([today_serial, 1])
