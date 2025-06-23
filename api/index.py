@@ -62,6 +62,8 @@ def track_and_redirect():
     today_serial = to_sheets_serial(now)
 
     today = datetime.now(sydney).date().isoformat()
+
+    supabase.rpc("increment_daily_count", {"in_date": today}).execute()
     result = supabase.table("daily_visits").select("*").eq("date", today).single().execute()
     count = result.data["count"]
 
