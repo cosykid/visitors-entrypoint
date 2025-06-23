@@ -58,7 +58,7 @@ def track_and_redirect():
         ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     )
     client = gspread.authorize(creds)
-    sheet = client.open("visitors-summary").sheet1
+    sheet = client.open("visitors-entrypoint").sheet1
 
     # Update cell B1 (or wherever you want)
     sheet.update_acell("B1", count)
