@@ -74,11 +74,8 @@ def track_and_redirect():
 
     for i, row in enumerate(records, start=2):
         if row.get("date") == today_str:
-            current_count = int(row.get("count", 0))
             sheet.update_cell(i, 2, int(count))
             break
-    else:
-        sheet.append_row([today_serial, 1])
 
     return response
 
